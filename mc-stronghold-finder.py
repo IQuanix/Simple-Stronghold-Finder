@@ -10,9 +10,12 @@ print("DEBUG: Getting Ready..")
 try:
     ws = websocket.create_connection("ws://localhost:8765/mcctp")
 
-    was_pressed = False
+    # button handling
+    rc_was_pressed = False
+    f8_was_pressed = False
     state = 0
 
+    # for later calculation of position
     coords_A = np.array([0, 0])
     coords_B = np.array([0, 0])
     angle_A = 0
@@ -27,32 +30,35 @@ try:
             player_state = data["playerState"]
 
             # check if right-clicking
-            pressed = bool(ctypes.windll.user32.GetAsyncKeyState(0x02) & 0x8000)
+            rc_pressed = bool(ctypes.windll.user32.GetAsyncKeyState(0x02) & 0x8000)
+            # same for f8
+            f8_pressed = bool(ctypes.windll.user32.GetAsyncKeyState(0x77) & 0x8000)
 
             # state-machine
-            if state == 0 and pressed and not was_pressed:
+            if state == 0 and rc_pressed and not rc_was_pressed:
                 print("1. eye thrown")
                 state = 1
 
-            elif state == 1 and pressed and not was_pressed:
-                print("1. position marked")
+            elif state == 1 and f8_pressed and not f8_was_pressed:
                 # save second pos & angle
                 coords_A = np.array([player_state["x"], player_state["z"]])  # X, Z
                 angle_A = player_state["yaw"]
+                print("1. position marked")
                 state = 2
 
-            elif state == 2 and pressed and not was_pressed:
+            elif state == 2 and rc_pressed and not rc_was_pressed:
                 print("2. eye thrown")
                 state = 3
 
-            elif state == 3 and pressed and not was_pressed:
-                print("2. position marked")
+            elif state == 3 and f8_pressed and not f8_was_pressed:
                 # save second pos & angle
                 coords_B = np.array([player_state["x"], player_state["z"]])  # X, Z
                 angle_B = player_state["yaw"]
+                print("2. position marked")
                 break
 
-            was_pressed = pressed
+            rc_was_pressed = rc_pressed
+            f8_was_pressed = f8_pressed
             time.sleep(0.01)  # debounce
 
     # calculate estimated position
