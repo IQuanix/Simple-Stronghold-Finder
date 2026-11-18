@@ -9,6 +9,7 @@ from rich.console import Console
 from rich.layout import Layout
 from rich.live import Live
 from rich.panel import Panel
+from rich.spinner import Spinner
 from rich.text import Text
 
 console = Console(width=70, height=15)
@@ -34,12 +35,12 @@ layout["l1"].update(
         Align(actions, "left", vertical="middle"),
         border_style="blue",
         box=box.SQUARE,
-        padding=(0, 2),
+        padding=(0, 0),
     )
 )
 
 coords = Text.from_markup(
-    "Current coordinates:\n[bold bright_white]X: 000 | Y: 000 | Z: 000[/]",
+    "Current coordinates:\n[bold bright_white]X: --- | Y: --- | Z: ---[/]",
     justify="center",
 )
 
@@ -54,9 +55,9 @@ layout["t1"].update(
 
 stronghold = Text.assemble(
     ("Stronghold at: ", "bold"),
-    "  [X: --- | Z: ---]\n\n",
+    ("  [X: --- | Z: ---]\n\n", "dim"),
     ("Distance from here: ", "bold"),
-    (" » --- blocks «", "bright_magenta"),
+    (" » --- blocks «", "dim"),
     justify="center",
 )
 
@@ -76,16 +77,34 @@ layout["lower"].update(
         Align(log, "left", vertical="middle"),
         border_style="blue",
         box=box.SQUARE,
-        padding=(0, 1),
+        padding=(0, 0),
     )
 )
 
 
 # function for updating the console log
-def update_log(message, style="white"):
-    log.plain = ""
-    log.append("Log: ", style="bold")
-    log.append(message, style=style)
+def update_log(message, style="white", spinner=False):
+    # Avoid restarting the spinner on every update
+    current = (message, style, spinner)
+    if getattr(update_log, "_last", None) == current:
+        return
+
+    update_log._last = current
+
+    content = Text.assemble(("Log: ", "bold"), (message, style))
+
+    # style for loading spinner
+    if spinner:
+        content = Spinner("dots", text=content, style="cyan")
+
+    layout["lower"].update(
+        Panel(
+            Align(content, "left", vertical="middle"),
+            border_style="blue",
+            box=box.SQUARE,
+            padding=(0, 0),
+        )
+    )
 
 
 # websocket build
@@ -109,8 +128,8 @@ try:
     angle_B: float = 0
 
     # live dashboard ------------------------------------------------------------
-    with Live(layout, console=console, refresh_per_second=4, screen=True):
-        update_log("Getting player data...")
+    with Live(layout, console=console, refresh_per_second=12, screen=True):
+        update_log("Getting player data...", spinner=True)
 
         while True:
             # get data
@@ -140,10 +159,11 @@ try:
 
                 # state-machine
                 if state == 0:
-                    update_log("Waiting for shift + f8...", style="yellow")
+                    update_log("Waiting for shift + f8", style="yellow", spinner=True)
                 elif state == 1:
                     update_log(
-                        "Measurement routine started! Waiting for inputs...",
+                        "Measurement routine started! Waiting for inputs",
+                        spinner=True,
                         style="green",
                     )
                 # starts a new marking run after shift+f8 combo
@@ -167,7 +187,7 @@ try:
                     # save second pos & angle
                     coords_A = np.array([player_state["x"], player_state["z"]])  # X, Z
                     angle_A = player_state["yaw"]
-                    # print("1. position marked")
+
                     actions.plain = ""
                     actions.append_text(
                         Text.from_markup(
@@ -180,7 +200,6 @@ try:
                     state = 3
 
                 elif state == 3 and rc_pressed and not rc_was_pressed:
-                    # print("2. eye thrown")
                     actions.plain = ""
                     actions.append_text(
                         Text.from_markup(
@@ -196,7 +215,7 @@ try:
                     # save second pos & angle
                     coords_B = np.array([player_state["x"], player_state["z"]])  # X, Z
                     angle_B = player_state["yaw"]
-                    # print("2. position marked")
+
                     actions.plain = ""
                     actions.append_text(
                         Text.from_markup(
@@ -220,7 +239,7 @@ try:
                             "[dim]2. position marked[/]"
                         )
                     )
-                    # print("---" * 20)
+
                     # headings to radians
                     a = np.deg2rad(angle_A)
                     b = np.deg2rad(angle_B)
@@ -230,7 +249,7 @@ try:
                     dir_B = np.array([-np.sin(b), np.cos(b)])
 
                     try:
-                        update_log("Calculating stronghold position...")
+                        update_log("Calculating stronghold position", spinner=True)
 
                         # solve for aprox. coords
                         matrix = np.column_stack((dir_A, -dir_B))
@@ -241,11 +260,6 @@ try:
 
                         update_log("Position found!")
 
-                        """
-                        print(
-                            f"| Stronghold at:\t[{stronghold[0]:,.0f} X | {stronghold[1]:,.0f} Z]\t|"
-                        )"""
-                        # print(f"| Distance from here: \t» {distance_B:,.0f} blocks «\t|")
                         stronghold = Text.assemble(
                             ("Stronghold at: ", "bold"),
                             (
