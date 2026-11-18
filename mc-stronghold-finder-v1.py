@@ -21,12 +21,7 @@ layout.split_column(Layout(name="upper", ratio=3), Layout(name="lower", ratio=1)
 layout["upper"].split_row(Layout(name="l1", ratio=1), Layout(name="r1", ratio=2))
 layout["r1"].split_column(Layout(name="t1", ratio=1), Layout(name="t2", ratio=1))
 
-"""
-[#638f6e]
-[#50FA7B]
-[dim]
-"""
-
+# pre-fill all panels
 actions = Text.from_markup(
     "[dim]1. eye thrown[/]\n\n"
     "[dim]1. position marked[/]\n\n"
@@ -86,19 +81,25 @@ layout["lower"].update(
 )
 
 
-def update_log(message):
+# function for updating the console log
+def update_log(message, style="white"):
     log.plain = ""
     log.append("Log: ", style="bold")
-    log.append(message)
+    log.append(message, style=style)
 
 
 # websocket build
 try:
+    # connects with the MCCTP mod over default port 8765
     ws = websocket.create_connection("ws://localhost:8765/mcctp")
 
     # button handling
     rc_was_pressed: bool = False
     f8_was_pressed: bool = False
+    shift_pressed: bool = False
+    shift_was_pressed: bool = False
+    combo_pressed: bool = False
+    combo_was_pressed = False
     state: int = 0  # state-machine
 
     # for later calculation of position
@@ -109,7 +110,7 @@ try:
 
     # live dashboard ------------------------------------------------------------
     with Live(layout, console=console, refresh_per_second=4, screen=True):
-        update_log("Ready for player data...")
+        update_log("Getting player data...")
 
         while True:
             # get data
@@ -123,20 +124,34 @@ try:
                 rc_pressed = bool(ctypes.windll.user32.GetAsyncKeyState(0x02) & 0x8000)
                 # same for f8
                 f8_pressed = bool(ctypes.windll.user32.GetAsyncKeyState(0x77) & 0x8000)
-
-                update_log("Waiting for inputs...")
+                # same for either shift key
+                shift_pressed = bool(
+                    ctypes.windll.user32.GetAsyncKeyState(0x10) & 0x8000
+                )
+                combo_pressed = shift_pressed and f8_pressed
 
                 #  update live coords
                 coords.plain = ""
                 coords.append_text(
                     Text.from_markup(
-                        f"Current coordinates:\n[#db1fcb]X: {player_state['x']:,.0f} | Y: {player_state['y']:,.0f} | Z: {player_state['x']:,.0f}[/]"
+                        f"Current coordinates:\n[#db1fcb]X: {player_state['x']:,.0f} | Y: {player_state['y']:,.0f} | Z: {player_state['z']:,.0f}[/]"
                     )
                 )
 
                 # state-machine
-                if state == 0 and rc_pressed and not rc_was_pressed:
-                    # print("1. eye thrown")
+                if state == 0:
+                    update_log("Waiting for shift + f8...", style="yellow")
+                elif state == 1:
+                    update_log(
+                        "Measurement routine started! Waiting for inputs...",
+                        style="green",
+                    )
+                # starts a new marking run after shift+f8 combo
+                if state == 0 and combo_pressed and not combo_was_pressed:
+                    state = 1  # start measurement routine
+
+                # state-machine
+                if state == 1 and rc_pressed and not rc_was_pressed:
                     actions.plain = ""
                     actions.append_text(
                         Text.from_markup(
@@ -146,9 +161,9 @@ try:
                             "[dim]2. position marked[/]"
                         )
                     )
-                    state = 1
+                    state = 2
 
-                elif state == 1 and f8_pressed and not f8_was_pressed:
+                elif state == 2 and f8_pressed and not f8_was_pressed:
                     # save second pos & angle
                     coords_A = np.array([player_state["x"], player_state["z"]])  # X, Z
                     angle_A = player_state["yaw"]
@@ -162,9 +177,9 @@ try:
                             "[dim]2. position marked[/]"
                         )
                     )
-                    state = 2
+                    state = 3
 
-                elif state == 2 and rc_pressed and not rc_was_pressed:
+                elif state == 3 and rc_pressed and not rc_was_pressed:
                     # print("2. eye thrown")
                     actions.plain = ""
                     actions.append_text(
@@ -175,9 +190,9 @@ try:
                             "[dim]2. position marked[/]"
                         )
                     )
-                    state = 3
+                    state = 4
 
-                elif state == 3 and f8_pressed and not f8_was_pressed:
+                elif state == 4 and f8_pressed and not f8_was_pressed:
                     # save second pos & angle
                     coords_B = np.array([player_state["x"], player_state["z"]])  # X, Z
                     angle_B = player_state["yaw"]
@@ -191,9 +206,9 @@ try:
                             "[#50FA7B]2. position marked[/]"
                         )
                     )
-                    state = 4
+                    state = 5
 
-                elif state == 4:
+                elif state == 5:
                     # calculate estimated position
 
                     actions.plain = ""
@@ -251,17 +266,16 @@ try:
                             )
                         )
 
-                    except np.linalg.LinAlgError:  # catching error for no data
-                        # print("DEBUG: Bad data | Prob Code Error")
-                        pass
+                    except np.linalg.LinAlgError as e:  # catching error for no data
+                        console.print(f"[red]Solving error: {e}[/]")
 
-                    # print("---" * 20)
-                    # print("New capture prepared..")
                     state = 0
-                    # break
 
+                # reset states
                 rc_was_pressed = rc_pressed
                 f8_was_pressed = f8_pressed
+                shift_was_pressed = shift_pressed
+                combo_was_pressed = combo_pressed
 
 
 except OSError as e:

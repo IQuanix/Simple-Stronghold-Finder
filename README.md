@@ -36,6 +36,8 @@ Start the script when ready to search for the stronghold. Then:
 - Press `F8` to mark the second position.
 
 The script then gives you an estimated position of the stronghold.
+<br>
+To stop use `ctrl+c` in the terminal
 
 <br>
 
