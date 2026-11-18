@@ -13,7 +13,7 @@ try:
     # button handling
     rc_was_pressed: bool = False
     f8_was_pressed: bool = False
-    state: int = 0
+    state: int = 0  # state-machine
 
     # for later calculation of position
     coords_A: float = np.array([0, 0])
@@ -90,7 +90,7 @@ try:
 
             rc_was_pressed = rc_pressed
             f8_was_pressed = f8_pressed
-            time.sleep(0.01)  # debounce
+            time.sleep(0.01)  # "debounce"
 
 
 except OSError:
