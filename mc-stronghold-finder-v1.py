@@ -1,8 +1,8 @@
 import ctypes
-import json
+import time
 
 import numpy as np
-import websocket
+import pyperclip
 from rich import box
 from rich.align import Align
 from rich.console import Console
@@ -107,17 +107,35 @@ def update_log(message, style="white", spinner=False):
     )
 
 
-# websocket build
-try:
-    # connects with the MCCTP mod over default port 8765
-    ws = websocket.create_connection("ws://localhost:8765/mcctp")
+def get_clipboard() -> list[float] | None:
+    # copy current clipboard
+    clipboard = pyperclip.paste()
+    # parse the copy
+    stripped = clipboard.strip().split()
 
+    if stripped[:6] == ["/execute", "in", "minecraft:overworld", "run", "tp", "@s"]:
+        try:
+            # -10.18 16.81 -535.17
+            # keep only X, Z and yaw
+            data = list(map(float, stripped[6:]))
+            data = [data[i] for i in (0, 2, 3)]
+            # fix weird minecraft endless yaw
+            data[2] = ((data[2] + 180) % 360) - 180
+
+            return data
+        except (ValueError, IndexError):
+            return None
+    else:
+        return None
+
+
+# keyboard and clipboard measurement loop
+try:
     # button handling
     rc_was_pressed: bool = False
     f8_was_pressed: bool = False
-    shift_pressed: bool = False
-    shift_was_pressed: bool = False
-    combo_pressed: bool = False
+    f3_was_pressed: bool = False
+    c_was_pressed: bool = False
     combo_was_pressed = False
     state: int = 0  # state-machine
 
@@ -127,67 +145,70 @@ try:
     angle_A: float = 0
     angle_B: float = 0
 
+    # player coords from clipboard
+    player_X: float = 0
+    player_Z: float = 0
+    player_Yaw: float = 0
+
     # live dashboard ------------------------------------------------------------
     with Live(layout, console=console, refresh_per_second=12, screen=True):
-        update_log("Getting player data...", spinner=True)
+        update_log("Waiting for F8 activation", style="yellow", spinner=True)
 
         while True:
-            # get data
-            data = json.loads(ws.recv())
+            # default syntax of f3 + c
+            # /execute in minecraft:overworld run tp @s -10.18 79.00 16.81 -535.17 17.74
 
-            if data.get("type") == "game_state":
-                # get player data
-                player_state = data["playerState"]
+            # check if right-clicking & f8 & f3 & c
+            rc_pressed = bool(
+                ctypes.windll.user32.GetAsyncKeyState(0x02) & 0x8000
+            )  # eye thrown
+            f8_pressed = bool(
+                ctypes.windll.user32.GetAsyncKeyState(0x77) & 0x8000
+            )  # start calculator
+            f3_pressed = bool(
+                ctypes.windll.user32.GetAsyncKeyState(0x72) & 0x8000
+            )  # f3 menu
+            c_pressed = bool(
+                ctypes.windll.user32.GetAsyncKeyState(0x43) & 0x8000
+            )  # for f3 combo and copy of coords
+            combo_pressed = f3_pressed and c_pressed  # combo for clipboard
 
-                # check if right-clicking
-                rc_pressed = bool(ctypes.windll.user32.GetAsyncKeyState(0x02) & 0x8000)
-                # same for f8
-                f8_pressed = bool(ctypes.windll.user32.GetAsyncKeyState(0x77) & 0x8000)
-                # same for either shift key
-                shift_pressed = bool(
-                    ctypes.windll.user32.GetAsyncKeyState(0x10) & 0x8000
+            # Start a new run on F8; keep the last result or error visible while idle.
+            if state == 0 and f8_pressed and not f8_was_pressed:
+                state = 1  # start measurement routine
+                update_log(
+                    "Measurement routine started! Waiting for first eye",
+                    spinner=True,
+                    style="green",
                 )
-                combo_pressed = shift_pressed and f8_pressed
 
-                #  update live coords
-                coords.plain = ""
-                coords.append_text(
+            # state-machine
+            if state == 1 and rc_pressed and not rc_was_pressed:
+                update_log("1. Eye detected")
+                actions.plain = ""
+                actions.append_text(
                     Text.from_markup(
-                        f"Current coordinates:\n[#db1fcb]X: {player_state['x']:,.0f} | Y: {player_state['y']:,.0f} | Z: {player_state['z']:,.0f}[/]"
+                        "[#50FA7B]1. eye thrown[/]\n\n"
+                        "[dim]1. position marked[/]\n\n"
+                        "[dim]2. eye thrown[/]\n\n"
+                        "[dim]2. position marked[/]"
                     )
                 )
+                state = 2
 
-                # state-machine
-                if state == 0:
-                    update_log("Waiting for shift + f8", style="yellow", spinner=True)
-                elif state == 1:
+            elif state == 2 and combo_pressed and not combo_was_pressed:
+                time.sleep(0.2)
+                # unpack clipboards content
+                data = get_clipboard()
+                if data is not None:
+                    player_X, player_Z, player_Yaw = data
+                    # save first pos & angle
+                    coords_A = np.array([player_X, player_Z])  # X, Z
+                    angle_A = player_Yaw
                     update_log(
-                        "Measurement routine started! Waiting for inputs",
-                        spinner=True,
-                        style="green",
+                        f"Saved: coords_A: {coords_A}, angle_A: {angle_A}",
+                        style="yellow",
                     )
-                # starts a new marking run after shift+f8 combo
-                if state == 0 and combo_pressed and not combo_was_pressed:
-                    state = 1  # start measurement routine
-
-                # state-machine
-                if state == 1 and rc_pressed and not rc_was_pressed:
-                    actions.plain = ""
-                    actions.append_text(
-                        Text.from_markup(
-                            "[#50FA7B]1. eye thrown[/]\n\n"
-                            "[dim]1. position marked[/]\n\n"
-                            "[dim]2. eye thrown[/]\n\n"
-                            "[dim]2. position marked[/]"
-                        )
-                    )
-                    state = 2
-
-                elif state == 2 and f8_pressed and not f8_was_pressed:
-                    # save second pos & angle
-                    coords_A = np.array([player_state["x"], player_state["z"]])  # X, Z
-                    angle_A = player_state["yaw"]
-
                     actions.plain = ""
                     actions.append_text(
                         Text.from_markup(
@@ -198,24 +219,35 @@ try:
                         )
                     )
                     state = 3
+                else:
+                    update_log("Invalid clipboard data!", style="red")
 
-                elif state == 3 and rc_pressed and not rc_was_pressed:
-                    actions.plain = ""
-                    actions.append_text(
-                        Text.from_markup(
-                            "[#638f6e]1. eye thrown[/]\n\n"
-                            "[#638f6e]1. position marked[/]\n\n"
-                            "[#50FA7B]2. eye thrown[/]\n\n"
-                            "[dim]2. position marked[/]"
-                        )
+            elif state == 3 and rc_pressed and not rc_was_pressed:
+                update_log("2. Eye detected")
+                actions.plain = ""
+                actions.append_text(
+                    Text.from_markup(
+                        "[#638f6e]1. eye thrown[/]\n\n"
+                        "[#638f6e]1. position marked[/]\n\n"
+                        "[#50FA7B]2. eye thrown[/]\n\n"
+                        "[dim]2. position marked[/]"
                     )
-                    state = 4
+                )
+                state = 4
 
-                elif state == 4 and f8_pressed and not f8_was_pressed:
+            elif state == 4 and combo_pressed and not combo_was_pressed:
+                time.sleep(0.2)
+                # unpack clipboards content
+                data = get_clipboard()
+                if data is not None:
+                    player_X, player_Z, player_Yaw = data
                     # save second pos & angle
-                    coords_B = np.array([player_state["x"], player_state["z"]])  # X, Z
-                    angle_B = player_state["yaw"]
-
+                    coords_B = np.array([player_X, player_Z])  # X, Z
+                    angle_B = player_Yaw
+                    update_log(
+                        f"Saved: coords_B: {coords_B}, angle_B: {angle_B}",
+                        style="yellow",
+                    )
                     actions.plain = ""
                     actions.append_text(
                         Text.from_markup(
@@ -226,75 +258,102 @@ try:
                         )
                     )
                     state = 5
+                else:
+                    update_log("Invalid clipboard data!", style="red")
 
-                elif state == 5:
-                    # calculate estimated position
+            elif state == 5:
+                # calculate estimated position
 
-                    actions.plain = ""
-                    actions.append_text(
-                        Text.from_markup(
-                            "[dim]1. eye thrown[/]\n\n"
-                            "[dim]1. position marked[/]\n\n"
-                            "[dim]2. eye thrown[/]\n\n"
-                            "[dim]2. position marked[/]"
-                        )
+                actions.plain = ""
+                actions.append_text(
+                    Text.from_markup(
+                        "[dim]1. eye thrown[/]\n\n"
+                        "[dim]1. position marked[/]\n\n"
+                        "[dim]2. eye thrown[/]\n\n"
+                        "[dim]2. position marked[/]"
+                    )
+                )
+
+                # headings to radians
+                a = np.deg2rad(angle_A)
+                b = np.deg2rad(angle_B)
+
+                # minecraft direction vectors (X, Z)
+                dir_A = np.array([-np.sin(a), np.cos(a)])
+                dir_B = np.array([-np.sin(b), np.cos(b)])
+
+                matrix = np.column_stack((dir_A, -dir_B))
+
+                # A narrow angle reduces accuracy but still has an intersection.
+                # Reject parallel lines, including opposite-facing directions.
+                angle_diff = abs((angle_A - angle_B + 180) % 360 - 180)
+                crossing_angle = min(angle_diff, 180 - angle_diff)
+
+                if abs(np.linalg.det(matrix)) < 1e-8:
+                    update_log(
+                        "Directions are parallel! Move sideways and retry with F8.",
+                        style="red",
                     )
 
-                    # headings to radians
-                    a = np.deg2rad(angle_A)
-                    b = np.deg2rad(angle_B)
-
-                    # minecraft direction vectors (X, Z)
-                    dir_A = np.array([-np.sin(a), np.cos(a)])
-                    dir_B = np.array([-np.sin(b), np.cos(b)])
-
+                else:
                     try:
-                        update_log("Calculating stronghold position", spinner=True)
-
-                        # solve for aprox. coords
-                        matrix = np.column_stack((dir_A, -dir_B))
                         distance_A, distance_B = np.linalg.solve(
                             matrix, coords_B - coords_A
                         )
-                        stronghold = coords_A + distance_A * dir_A
 
-                        update_log("Position found!")
-
-                        stronghold = Text.assemble(
-                            ("Stronghold at: ", "bold"),
-                            (
-                                f"  [X: {stronghold[0]:,.0f} | Z: {stronghold[1]:,.0f}]\n\n",
-                                "#2fde5b",
-                            ),
-                            ("Distance from here: ", "bold"),
-                            (f" » {distance_B:,.0f} blocks «", "bright_magenta"),
-                            justify="center",
-                        )
-
-                        layout["t2"].update(
-                            Panel(
-                                Align.center(stronghold, vertical="middle"),
-                                border_style="blue",
-                                box=box.SQUARE,
-                                padding=0,
+                        if distance_A < 0 or distance_B < 0:
+                            update_log(
+                                "Intersection is behind a measurement! F8 to retry.",
+                                style="red",
                             )
-                        )
+                        else:
+                            stronghold_coords = coords_A + distance_A * dir_A
+
+                            distance = np.linalg.norm(stronghold_coords - coords_B)
+
+                            stronghold = Text.assemble(
+                                ("Stronghold at: ", "bold"),
+                                (
+                                    f"  [X: {stronghold_coords[0]:,.0f} | Z: {stronghold_coords[1]:,.0f}]\n\n",
+                                    "#2fde5b",
+                                ),
+                                ("Distance from here: ", "bold"),
+                                (f" » {distance:,.0f} blocks «", "bright_magenta"),
+                                justify="center",
+                            )
+
+                            layout["t2"].update(
+                                Panel(
+                                    Align.center(stronghold, vertical="middle"),
+                                    border_style="blue",
+                                    box=box.SQUARE,
+                                    padding=0,
+                                )
+                            )
+                            if crossing_angle < 3:
+                                update_log(
+                                    "Position found; small angle, low accuracy. F8 to retry.",
+                                    style="yellow",
+                                )
+                            else:
+                                update_log(
+                                    "Position found! Press F8 for a new measurement.",
+                                    style="green",
+                                )
 
                     except np.linalg.LinAlgError as e:  # catching error for no data
-                        console.print(f"[red]Solving error: {e}[/]")
+                        update_log(f"Solving error: {e}", style="red")
 
-                    state = 0
+                state = 0
 
-                # reset states
-                rc_was_pressed = rc_pressed
-                f8_was_pressed = f8_pressed
-                shift_was_pressed = shift_pressed
-                combo_was_pressed = combo_pressed
+            # reset states
+            rc_was_pressed = rc_pressed
+            f8_was_pressed = f8_pressed
+            f3_was_pressed = f3_pressed
+            c_was_pressed = c_pressed
+            combo_was_pressed = combo_pressed
+            time.sleep(0.01)
 
-
-except OSError as e:
-    # print("DEBUG: Connection Error | Check Minecraft MCSTP")
-    console.print(f"[red]WebSocket connection error: {e}[/]")
 
 except KeyboardInterrupt:
-    console.print("[yellow]Dashboard stopped.[/]")
+    update_log("Dashboard stopped.", style="red")
