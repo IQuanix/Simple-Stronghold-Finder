@@ -381,7 +381,8 @@ try:
                                     padding=0,
                                 )
                             )
-                            if crossing_angle < 2:
+                            # with this error ~ 100 blocks error
+                            if crossing_angle < 0.15:
                                 update_log(
                                     "Position found! (Small angle, low accuracy) Retry with f8",
                                     style="yellow",
