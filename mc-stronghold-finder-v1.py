@@ -12,6 +12,42 @@ from rich.panel import Panel
 from rich.spinner import Spinner
 from rich.text import Text
 
+
+# class for making sweeping/scrolling highlights on text
+# kinda unnecessary but dope xD
+class TitleSweep:
+    def __init__(self, text, speed=10, width=5):
+        self.text = text
+        self.speed = speed
+        self.width = width
+
+    def __rich__(self):
+        pos = (time.monotonic() * self.speed) % (
+            len(self.text) + self.width * 4
+        ) - self.width * 2
+
+        animated = Text()
+
+        for i, char in enumerate(self.text):
+            intensity = max(0, 1 - abs(i - pos) / self.width)
+            intensity = intensity * intensity * (3 - 2 * intensity)
+
+            # Base #35FFB8 -> Highlight #E0FFF5
+            r = int(53 + 171 * intensity)
+            g = 255
+            b = int(184 + 61 * intensity)
+
+            animated.append(char, style=f"rgb({r},{g},{b})")
+
+        return Text.assemble(
+            animated,
+            "\n",
+            ("By: ", "bold bright_white"),
+            ("IQuanix", "#9544ff"),
+            justify="center",
+        )
+
+
 console = Console(width=70, height=15)
 
 # layout creation
@@ -39,10 +75,9 @@ layout["l1"].update(
     )
 )
 
-coords = Text.from_markup(
-    "[#35FFB8]Stronghold finder V1[/]\n[bold bright_white]By: [/][#9544ff]IQuanix[/]",
-    justify="center",
-)
+# some credits
+# speed in fps, width in characters
+coords = TitleSweep("Stronghold Finder V1", speed=10, width=3)
 
 layout["t1"].update(
     Panel(
@@ -107,6 +142,7 @@ def update_log(message, style="white", spinner=False):
     )
 
 
+# function to get current windows clipboards content without reading minecraft memory
 def get_clipboard() -> list[float] | None:
     # copy current clipboard
     clipboard = pyperclip.paste()
@@ -128,6 +164,9 @@ def get_clipboard() -> list[float] | None:
     else:
         return None
 
+
+# --------------------------------------
+# main calculator logic
 
 # keyboard and clipboard measurement loop
 try:
@@ -151,11 +190,11 @@ try:
     player_Yaw: float = 0
 
     # live dashboard ------------------------------------------------------------
-    with Live(layout, console=console, refresh_per_second=12, screen=True):
+    with Live(layout, console=console, refresh_per_second=30, screen=True):
         update_log("Waiting for F8 activation", style="yellow", spinner=True)
 
         while True:
-            # default syntax of f3 + c
+            # default syntax of f3 + c e.g.
             # /execute in minecraft:overworld run tp @s -10.18 79.00 16.81 -535.17 17.74
 
             # check if right-clicking & f8 & f3 & c
@@ -181,6 +220,8 @@ try:
                     spinner=True,
                     style="green",
                 )
+                # mark t1 panel as active
+                layout["l1"].renderable.border_style = "#16FF4C"
 
             # state-machine
             if state == 1 and rc_pressed and not rc_was_pressed:
@@ -188,7 +229,7 @@ try:
                 actions.plain = ""
                 actions.append_text(
                     Text.from_markup(
-                        "[#50FA7B]1. eye thrown[/]\n\n"
+                        "[#50FA7B blink]1. eye thrown[/]\n\n"
                         "[dim]1. position marked[/]\n\n"
                         "[dim]2. eye thrown[/]\n\n"
                         "[dim]2. position marked[/]"
@@ -213,7 +254,7 @@ try:
                     actions.append_text(
                         Text.from_markup(
                             "[#638f6e]1. eye thrown[/]\n\n"
-                            "[#50FA7B]1. position marked[/]\n\n"
+                            "[#50FA7B blink]1. position marked[/]\n\n"
                             "[dim]2. eye thrown[/]\n\n"
                             "[dim]2. position marked[/]"
                         )
@@ -229,7 +270,7 @@ try:
                     Text.from_markup(
                         "[#638f6e]1. eye thrown[/]\n\n"
                         "[#638f6e]1. position marked[/]\n\n"
-                        "[#50FA7B]2. eye thrown[/]\n\n"
+                        "[#50FA7B blink]2. eye thrown[/]\n\n"
                         "[dim]2. position marked[/]"
                     )
                 )
@@ -254,12 +295,14 @@ try:
                             "[#638f6e]1. eye thrown[/]\n\n"
                             "[#638f6e]1. position marked[/]\n\n"
                             "[#638f6e]2. eye thrown[/]\n\n"
-                            "[#50FA7B]2. position marked[/]"
+                            "[#50FA7B blink]2. position marked[/]"
                         )
                     )
                     state = 5
                 else:
-                    update_log("Invalid clipboard data!", style="red")
+                    update_log(
+                        "Invalid clipboard data! Just try f3 + c again", style="red"
+                    )
 
             elif state == 5:
                 # calculate estimated position
@@ -273,6 +316,7 @@ try:
                         "[dim]2. position marked[/]"
                     )
                 )
+                layout["l1"].renderable.border_style = "blue"
 
                 # headings to radians
                 a = np.deg2rad(angle_A)
@@ -291,7 +335,7 @@ try:
 
                 if abs(np.linalg.det(matrix)) < 1e-8:
                     update_log(
-                        "Directions are parallel! Move sideways and retry with F8.",
+                        "Directions are too parallel! Move sideways and retry with F8.",
                         style="red",
                     )
 
@@ -303,7 +347,7 @@ try:
 
                         if distance_A < 0 or distance_B < 0:
                             update_log(
-                                "Intersection is behind a measurement! F8 to retry.",
+                                "Intersection is behind a measurement! Retry with f8.",
                                 style="red",
                             )
                         else:
@@ -315,7 +359,7 @@ try:
                                 ("Stronghold at: ", "bold"),
                                 (
                                     f"  [X: {stronghold_coords[0]:,.0f} | Z: {stronghold_coords[1]:,.0f}]\n\n",
-                                    "#2fde5b",
+                                    "blink2 #2fde5b",
                                 ),
                                 ("Distance from here: ", "bold"),
                                 (f" » {distance:,.0f} blocks «", "bright_magenta"),
