@@ -46,7 +46,13 @@ Uses Minecraft Java Edition's `F3+C` clipboard command in the Overworld.
 
 
 # How to use
+Make sure that packages are installed.
+<br>
+Check that `simple-stronghold-finder.py` and `start-simple-stronghold-finder.bat` are in the same folder. 
+<br>
 
+__Regular use:__
+<br>
 Open the `start-simple-stronghold-finder.bat`, then:
 
 - Press `F8` to start a measurement routine.
