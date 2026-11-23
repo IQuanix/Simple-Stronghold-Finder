@@ -40,7 +40,7 @@ layout["l1"].update(
 )
 
 coords = Text.from_markup(
-    "Current coordinates:\n[bold bright_white]X: --- | Y: --- | Z: ---[/]",
+    "[#35FFB8]Stronghold finder V1[/]\n[bold bright_white]By: [/][#9544ff]IQuanix[/]",
     justify="center",
 )
 
@@ -330,9 +330,9 @@ try:
                                     padding=0,
                                 )
                             )
-                            if crossing_angle < 3:
+                            if crossing_angle < 2:
                                 update_log(
-                                    "Position found; small angle, low accuracy. F8 to retry.",
+                                    "Position found! (Small angle, low accuracy) Retry with f8",
                                     style="yellow",
                                 )
                             else:
@@ -352,6 +352,7 @@ try:
             f3_was_pressed = f3_pressed
             c_was_pressed = c_pressed
             combo_was_pressed = combo_pressed
+
             time.sleep(0.01)
 
 
