@@ -1,3 +1,10 @@
+# ============================================================
+# Project:  Simple Stronghold Finder (SSF)
+# Version:  v2.0
+# Author:   IQuanix
+# Created:  2026
+# ============================================================
+
 import ctypes
 import time
 
