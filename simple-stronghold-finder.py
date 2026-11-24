@@ -4,7 +4,6 @@
 # Author:   IQuanix
 # Created:  2026
 # ============================================================
-
 import ctypes
 import time
 
@@ -18,6 +17,8 @@ from rich.live import Live
 from rich.panel import Panel
 from rich.spinner import Spinner
 from rich.text import Text
+
+from logger import *
 
 
 # class for making sweeping/scrolling highlights on text
@@ -55,6 +56,7 @@ class TitleSweep:
         )
 
 
+# Set size
 console = Console(width=70, height=15)
 
 # layout creation
@@ -174,7 +176,7 @@ def get_clipboard() -> list[float] | None:
 
 # --------------------------------------
 # main calculator logic
-
+logger.info("Trying to startup..")
 # keyboard and clipboard measurement loop
 try:
     # button handling
@@ -199,7 +201,7 @@ try:
     # live dashboard ------------------------------------------------------------
     with Live(layout, console=console, refresh_per_second=30, screen=True):
         update_log("Waiting for F8 activation", style="yellow", spinner=True)
-
+        logger.info("Calculator up")
         while True:
             # default syntax of f3 + c e.g.
             # /execute in minecraft:overworld run tp @s -10.18 79.00 16.81 -535.17 17.74
@@ -222,6 +224,8 @@ try:
             # Start a new run on F8; keep the last result or error visible while idle.
             if state == 0 and f8_pressed and not f8_was_pressed:
                 state = 1  # start measurement routine
+                logger.info("-----------------------------------------")
+                logger.info("Routine started")
                 update_log(
                     "Measurement routine started! Waiting for first eye",
                     spinner=True,
@@ -233,6 +237,7 @@ try:
             # state-machine
             if state == 1 and rc_pressed and not rc_was_pressed:
                 update_log("1. Eye detected")
+                logger.info("1. Eye detected")
                 actions.plain = ""
                 actions.append_text(
                     Text.from_markup(
@@ -248,11 +253,15 @@ try:
                 time.sleep(0.2)
                 # unpack clipboards content
                 data = get_clipboard()
+                logger.info("Noticed first f3 + c combo")
                 if data is not None:
                     player_X, player_Z, player_Yaw = data
                     # save first pos & angle
                     coords_A = np.array([player_X, player_Z])  # X, Z
                     angle_A = player_Yaw
+                    logger.info(
+                        f"First position saved: coords_A: {coords_A}, angle_A: {angle_A}"
+                    )
                     update_log(
                         f"Saved: coords_A: {coords_A}, angle_A: {angle_A}",
                         style="yellow",
@@ -268,9 +277,13 @@ try:
                     )
                     state = 3
                 else:
-                    update_log("Invalid clipboard data!", style="red")
+                    logger.warning("Invalid clipboard data")
+                    update_log(
+                        "Invalid clipboard data! Just try f3 + c again", style="red"
+                    )
 
             elif state == 3 and rc_pressed and not rc_was_pressed:
+                logger.info("2. Eye detected")
                 update_log("2. Eye detected")
                 actions.plain = ""
                 actions.append_text(
@@ -284,6 +297,7 @@ try:
                 state = 4
 
             elif state == 4 and combo_pressed and not combo_was_pressed:
+                logger.info("Noticed first f3 + c combo")
                 time.sleep(0.2)
                 # unpack clipboards content
                 data = get_clipboard()
@@ -292,6 +306,9 @@ try:
                     # save second pos & angle
                     coords_B = np.array([player_X, player_Z])  # X, Z
                     angle_B = player_Yaw
+                    logger.info(
+                        f"Second position saved: coords_B: {coords_B}, angle_B: {angle_B}"
+                    )
                     update_log(
                         f"Saved: coords_B: {coords_B}, angle_B: {angle_B}",
                         style="yellow",
@@ -307,13 +324,13 @@ try:
                     )
                     state = 5
                 else:
+                    logger.warning(f"Invalid clipboard data: {data}")
                     update_log(
                         "Invalid clipboard data! Just try f3 + c again", style="red"
                     )
 
             elif state == 5:
-                # calculate estimated position
-
+                logger.info("-----------------------------------------")
                 actions.plain = ""
                 actions.append_text(
                     Text.from_markup(
@@ -324,11 +341,13 @@ try:
                     )
                 )
                 layout["l1"].renderable.border_style = "blue"
+                # calculate estimated position
 
                 # headings to radians
                 a = np.deg2rad(angle_A)
                 b = np.deg2rad(angle_B)
 
+                logger.info("Filling matrix")
                 # minecraft direction vectors (X, Z)
                 dir_A = np.array([-np.sin(a), np.cos(a)])
                 dir_B = np.array([-np.sin(b), np.cos(b)])
@@ -340,6 +359,7 @@ try:
                 angle_diff = abs((angle_A - angle_B + 180) % 360 - 180)
                 crossing_angle = min(angle_diff, 180 - angle_diff)
 
+                logger.info("Checking matrix..")
                 if abs(np.linalg.det(matrix)) < 1e-8:
                     update_log(
                         "Directions are too parallel! Move sideways and retry with F8.",
@@ -347,20 +367,23 @@ try:
                     )
 
                 else:
+                    logger.info("Trying calculation")
                     try:
                         distance_A, distance_B = np.linalg.solve(
                             matrix, coords_B - coords_A
                         )
 
                         if distance_A < 0 or distance_B < 0:
+                            logger.error("Distance intersection behind a measurement")
                             update_log(
                                 "Intersection is behind a measurement! Retry with f8.",
                                 style="red",
                             )
                         else:
                             stronghold_coords = coords_A + distance_A * dir_A
-
+                            logger.info(f"Got stronghold coords: {stronghold_coords}")
                             distance = np.linalg.norm(stronghold_coords - coords_B)
+                            logger.info(f"Got stronghold distance: {distance}")
 
                             stronghold = Text.assemble(
                                 ("Stronghold at: ", "bold"),
@@ -381,19 +404,23 @@ try:
                                     padding=0,
                                 )
                             )
-                            # with this error ~ 100 blocks error
+                            # Below 0.15 DEG pretty rare to get good results
                             if crossing_angle < 0.15:
+                                logger.warning(f"Small angle of: {crossing_angle}")
                                 update_log(
                                     "Position found! (Small angle, low accuracy) Retry with f8",
                                     style="yellow",
                                 )
                             else:
+                                logger.info(f"Angle is good: {crossing_angle}")
                                 update_log(
                                     "Position found! Press F8 for a new measurement.",
                                     style="green",
                                 )
+                                logger.info("\n")
 
                     except np.linalg.LinAlgError as e:  # catching error for no data
+                        logger.error(f"Solving error: {e}")
                         update_log(f"Solving error: {e}", style="red")
 
                 state = 0
@@ -409,4 +436,5 @@ try:
 
 
 except KeyboardInterrupt:
+    logger.info("Dashboard stopped by interrupt")
     update_log("Dashboard stopped.", style="red")
