@@ -3,7 +3,6 @@ This Python script calculates an estimated position of the stronghold using two 
 <br>
 $\color{pink}{\text{Still under development}}$
 <br>
-$\color{grey}{\text{(Still not accurate enough)}}$
 
 # How it works
 It uses the player's position and facing direction for each thrown Eye of Ender.
@@ -28,7 +27,7 @@ $\color{orange}{\text{Script not yet checked for being legal in speed running!}}
 | F8 activation | ✅ Compatible | Only starts the calculator and doesn't send inputs to Minecraft. |
 | Terminal interface| ✅ Compatible | Only displays information without modifying gameplay. |
 | Right-click detection | ⚠️ Needs review | Automatically detects mouse input. This is only used for displaying the next step to take |
-| Custom Python calculator | ❌ Not approved | The custom implementation is not on the official whitelist and will need to be checked |
+| Custom Python calculator | ❌ Not yet approved | The custom implementation is not on the official whitelist and will need to be checked |
 <br>
 » [Official Minecraft Speedrunning Rules](https://github.com/Minecraft-Java-Edition-Speedrunning/rules/blob/main/rules.typ) «
 
@@ -42,18 +41,15 @@ The script runs on Windows and needs the Python packages from `requirements.txt`
 python -m pip install -r requirements.txt
 ```
 
-Uses Minecraft Java Edition's `F3+C` clipboard command in the Overworld.
-
-
 # How to use
-Make sure that packages are installed.
+Make sure that all packages are installed.
 <br>
 Check that `simple-stronghold-finder.py` and `start-simple-stronghold-finder.bat` are in the same folder. 
 <br>
 
 __Regular use:__
 <br>
-Open the `start-simple-stronghold-finder.bat`, then:
+Execute the `start-simple-stronghold-finder.bat`, then:
 
 - Press `F8` to start a measurement routine.
 - Throw the first eye and follow it with your crosshair.
@@ -61,13 +57,23 @@ Open the `start-simple-stronghold-finder.bat`, then:
 - Move at least 20 blocks sideways relative to the first eye's direction. A wider baseline generally improves the estimate.
 - Throw the second eye, follow it with your crosshair, and briefly press `F3+C` again.
 
-The result panel shows the estimated X/Z position and distance from the second measurement. Directions less than ~2 degrees apart still produce a result, with a low-accuracy warning. Parallel directions and intersections behind either measurement produce an error. The completion message or error stays visible until another action updates it. Press `F8` to start another routine after a finished one. Use `Ctrl+C` in the terminal to terminate the calculator.
+The result panel shows the estimated X/Z position and distance from the second measurement. <br> Press `F8` to start another routine after a finished one. Use `Ctrl+C` in the terminal to terminate the calculator.
+<br>
+
+Note: <br>
+*You can throw more then one eye without messing with the calculation. The calculator only captures the first right-click to display the next step. It only needs the clipboards content of the two `F3+C` commands*
 
 # Features
 * Simple and light-weight terminal interface
 * Calculated an estimate of the strongholds position via two eyes of ender
 * Automatic clipboard content detection, so you don't need to tab out of the game
 * Shows distance to estimated position from your last thrown eye
+* Error handling
+
+# Accuracy
+The calculator can calculate a perfect position in theory. This heavily depends on how accurate you measure the two eyes.
+Examples of measurement errors:
+
 
 # Next fixes/additions
 - Probably add a measurement-starting shortcut like `Shift+F8` to avoid accidentally starting measurements again. ✅

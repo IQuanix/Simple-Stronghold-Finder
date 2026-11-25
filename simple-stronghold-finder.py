@@ -356,7 +356,9 @@ try:
 
                 # A narrow angle reduces accuracy but still has an intersection.
                 # Reject parallel lines, including opposite-facing directions.
+
                 angle_diff = abs((angle_A - angle_B + 180) % 360 - 180)
+                logger.info(f"Got angle_diff: {angle_diff}")
                 crossing_angle = min(angle_diff, 180 - angle_diff)
 
                 logger.info("Checking matrix..")

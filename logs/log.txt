@@ -1,0 +1,23 @@
+2026-11-25 09:49:09,105 | [INFO] | 
+
+2026-11-25 09:49:09,105 | [INFO] | Logger online!
+2026-11-25 09:49:09,115 | [INFO] | Trying to startup..
+2026-11-25 09:49:09,118 | [INFO] | Calculator up
+2026-11-25 09:49:34,984 | [INFO] | -----------------------------------------
+2026-11-25 09:49:34,984 | [INFO] | Routine started
+2026-11-25 09:49:38,028 | [INFO] | 1. Eye detected
+2026-11-25 09:49:40,548 | [INFO] | Noticed first f3 + c combo
+2026-11-25 09:49:40,549 | [INFO] | First position saved: coords_A: [ 805.62 -408.34], angle_A: -143.46
+2026-11-25 09:49:57,722 | [INFO] | 2. Eye detected
+2026-11-25 09:50:11,684 | [INFO] | Noticed first f3 + c combo
+2026-11-25 09:50:11,885 | [INFO] | Second position saved: coords_B: [ 815.57 -393.24], angle_B: -144.21
+2026-11-25 09:50:11,895 | [INFO] | -----------------------------------------
+2026-11-25 09:50:11,895 | [INFO] | Filling matrix
+2026-11-25 09:50:11,896 | [INFO] | Got angle_diff: 0.75
+2026-11-25 09:50:11,896 | [INFO] | Checking matrix..
+2026-11-25 09:50:11,896 | [INFO] | Trying calculation
+2026-11-25 09:50:11,896 | [INFO] | Got stronghold coords: [ 1574.40409197 -1445.77656788]
+2026-11-25 09:50:11,896 | [INFO] | Got stronghold distance: 1297.5601742726167
+2026-11-25 09:50:11,896 | [INFO] | Angle is good: 0.75
+2026-11-25 09:50:11,896 | [INFO] | 
+
