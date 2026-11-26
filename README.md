@@ -76,9 +76,18 @@ Note: <br>
 * Logging for later data inspection
 
 # Accuracy
-The calculator can calculate a perfect position in theory. This heavily depends on how accurate you measure the two eyes.
+The calculator can calculate a perfect position in theory, but this heavily depends on how accurate you measure the two eyes.
 Examples of measurement errors:
+<img width="872" height="450" alt="graph" src="https://github.com/user-attachments/assets/68979f5c-b891-42e1-8e6c-710b86835ccb" />
+<br>
+With 10 attempts and ~20 blocks distance between the eyes on trying to measure both eyes the same way each time, I calculated an average error of ~5 blocks. <br>
+The main factor is skill in the measurement, the other is how far away you measure the second eye.<br>
+After testing with a 0.1° measuring error (half a textured pixel off) on the first eye I got a position error of ~30 blocks already. <br>
+If you only walk 10 blocks away from the first eye position this can jump up to 100 blocks and so on.<br>
 
+# Additional info
+* Logs are stored in `logs/log.txt`. The file will be overwritten if it exceeds a file size of 1 MB. In those logs you can track the calculated values with their times. <br>
+* Images of the measurements are in `images/`
 
 # Next fixes/additions
 - Probably add a measurement-starting shortcut like `Shift+F8` to avoid accidentally starting measurements again ✅
