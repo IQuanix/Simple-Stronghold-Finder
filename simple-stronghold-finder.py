@@ -98,13 +98,19 @@ layout["t1"].update(
 )
 
 stronghold = Text.assemble(
-    ("Stronghold at: ", "bold"),
-    ("  [X: --- | Z: ---]\n\n", "dim"),
-    ("Distance from here: ", "bold"),
-    (" » --- blocks «", "dim"),
-    justify="center",
+    ("Stronghold (OV) at: ", "#66B47A bold"),
+    ("  [X: --- | Z: ---]\n", "#2fde5b dim"),
+    ("Stronghold (NE) at: ", "#703827 bold"),
+    ("  [X: --- | Z: ---]\n", "#D8481C dim"),
+    ("Distance from here (OV): ", "#66B47A bold"),
+    (" » --- blocks «\n", "#2fde5b dim"),
+    ("Distance from here (NE): ", "#703827 bold"),
+    (" » --- blocks «\n", "#D8481C dim"),
+    justify="left",
 )
-
+# dim/bold NE "#703827"
+# found NE "#D8481C"
+"#66B47A"
 layout["t2"].update(
     Panel(
         Align.center(stronghold, vertical="middle"),
@@ -397,14 +403,24 @@ try:
                             logger.info(f"Got stronghold distance: {distance}")
 
                             stronghold = Text.assemble(
-                                ("Stronghold at: ", "bold"),
+                                ("Stronghold (OV) at: ", "#66B47A bold"),
                                 (
-                                    f"  [X: {stronghold_coords[0]:,.0f} | Z: {stronghold_coords[1]:,.0f}]\n\n",
-                                    "blink2 #2fde5b",
+                                    f"  [X: {stronghold_coords[0]:,.0f} | Z: {stronghold_coords[1]:,.0f}]\n",
+                                    "blink #2fde5b",
                                 ),
-                                ("Distance from here: ", "bold"),
-                                (f" » {distance:,.0f} blocks «", "bright_magenta"),
-                                justify="center",
+                                ("Stronghold (NE) at: ", "#703827 bold"),
+                                (
+                                    f"  [X: {stronghold_coords[0] // 8:,.0f} | Z: {stronghold_coords[1] // 8:,.0f}]\n",
+                                    "blink #D8481C",
+                                ),
+                                ("Distance from here (OV): ", "#66B47A bold"),
+                                (f" » {distance:,.0f} blocks «\n", "#2fde5b"),
+                                ("Distance from here (NE): ", "#703827 bold"),
+                                (
+                                    f" » {distance // 8:,.0f} blocks «\n",
+                                    "#D8481C",
+                                ),
+                                justify="left",
                             )
 
                             layout["t2"].update(
