@@ -86,7 +86,7 @@ layout["l1"].update(
 
 # some credits
 # speed in fps, width in characters
-coords = TitleSweep("Stronghold Finder V1", speed=10, width=3)
+coords = TitleSweep("Simple Stronghold Finder", speed=10, width=3)
 
 layout["t1"].update(
     Panel(
@@ -231,6 +231,15 @@ try:
                     spinner=True,
                     style="green",
                 )
+                actions.plain = ""
+                actions.append_text(
+                    Text.from_markup(
+                        "[dim]1. eye thrown[/]\n\n"
+                        "[dim]1. position marked[/]\n\n"
+                        "[dim]2. eye thrown[/]\n\n"
+                        "[dim]2. position marked[/]"
+                    )
+                )
                 # mark t1 panel as active
                 layout["l1"].renderable.border_style = "#16FF4C"
 
@@ -337,7 +346,7 @@ try:
                         "[dim]1. eye thrown[/]\n\n"
                         "[dim]1. position marked[/]\n\n"
                         "[dim]2. eye thrown[/]\n\n"
-                        "[dim]2. position marked[/]"
+                        "[#50FA7B blink]2. position marked[/]"
                     )
                 )
                 layout["l1"].renderable.border_style = "blue"
